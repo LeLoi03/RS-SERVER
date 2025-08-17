@@ -1,0 +1,26 @@
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment files (NEVER include secrets in your image)
+.env
+
+# Git files
+.git/
+.gitignore
+
+# Virtual environment
+venv/
+.venv/
+
+# Documentation
+*.md
+
+# Data used for training, not needed by the API server
+data/
+
+# Any local IDE or OS files
+.vscode/
+.idea/
