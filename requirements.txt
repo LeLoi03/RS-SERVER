@@ -4,3 +4,5 @@ scikit-learn
 tqdm
 python-dotenv
 google-genai
+fastapi
+uvicorn
