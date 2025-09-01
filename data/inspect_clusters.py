@@ -1,7 +1,7 @@
 import pickle
 
 # --- CONFIGURATION ---
-CLUSTERING_FILE_PATH = 'golden_dataset_clustering_results.pkl'
+CLUSTERING_FILE_PATH = 'D:/RS-SERVER/artifacts/user_clustering.pkl'
 
 def main():
     """Loads the clustering results and prints the contents."""

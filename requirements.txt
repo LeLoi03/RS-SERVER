@@ -6,3 +6,7 @@ python-dotenv
 google-genai
 fastapi
 uvicorn
+scipy
+apscheduler
+pymongo 
+dnspython
