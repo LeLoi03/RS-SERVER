@@ -10,7 +10,9 @@ app = FastAPI(
     title="Recommendation System API",
     description="An API to serve recommendations and manage the model pipeline.",
     version="1.5.0", # Version bump to reflect self-healing startup
-    lifespan=lifespan
+    lifespan=lifespan,
+    root_path="/recommendation" 
+
 )
 
 # --- 2. CORS Middleware ---
