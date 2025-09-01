@@ -3,7 +3,7 @@
 from fastapi import FastAPI, Request # <--- Thêm Request
 from fastapi.middleware.cors import CORSMiddleware
 from src.api.lifespan import lifespan
-from src.api.routers import predictions, pipeline, summary
+from src.api.routers import predictions, pipeline, summary, scheduler # <-- Thêm scheduler
 
 # --- 1. Initialize FastAPI App ---
 app = FastAPI(
@@ -48,6 +48,7 @@ async def run_startup_background_tasks(request: Request, call_next):
 app.include_router(predictions.router, tags=["Predictions"])
 app.include_router(pipeline.router, tags=["Pipeline Management"])
 app.include_router(summary.router, tags=["Artifact Summary"])
+app.include_router(scheduler.router, tags=["Scheduler Management"]) # <-- Thêm dòng này
 
 # --- 4. Optional: Root endpoint for basic check ---
 @app.get("/", tags=["Root"])

@@ -10,12 +10,6 @@ import config.config as config
 # Load environment variables from .env file
 load_dotenv()
 
-# --- Gemini Service (Self-contained within this pipeline file) ---
-
-# ==============================================================================
-# --- BẮT ĐẦU PHẦN THAY ĐỔI ---
-# ==============================================================================
-
 class KeyManager:
     """
     Quản lý, xoay vòng và áp dụng thời gian chờ (cooldown) cho các key API.
@@ -72,7 +66,6 @@ class KeyManager:
 class GeminiService:
     """A service class for handling Gemini API embedding operations."""
     def __init__(self, env_prefix: str, model: str, task_type: str, dim: int):
-        # ... (logic __init__ giữ nguyên) ...
         try:
             from google import genai
             from google.genai import types
@@ -91,7 +84,6 @@ class GeminiService:
 
     @staticmethod
     def _normalize_embedding(embedding: list) -> list:
-        # ... (logic giữ nguyên) ...
         np_embedding = np.array(embedding)
         norm = np.linalg.norm(np_embedding)
         return (np_embedding / norm).tolist() if norm != 0 else embedding

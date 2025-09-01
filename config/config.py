@@ -39,7 +39,7 @@ NUM_NEIGHBORS = 25
 # --- GEMINI SERVICE CONFIGURATION ---
 GEMINI_ENV_PREFIX = "GEMINI_API_KEY_"
 EMBEDDING_MODEL = "models/gemini-embedding-001"
-EMBEDDING_TASK_TYPE = "RETRIEVAL_DOCUMENT"
+EMBEDDING_TASK_TYPE = "SEMANTIC_SIMILARITY"
 EMBEDDING_DIM = 768
 EMBEDDING_BATCH_SIZE = 50
 
@@ -58,7 +58,7 @@ BEHAVIORAL_WEIGHTS = {
 # The weight to give the behavioral similarity score when combining
 # with the preference-based (rating/review) similarity score.
 # 0.0 = 100% preference, 1.0 = 100% behavioral.
-BEHAVIORAL_SIM_WEIGHT = 0.9 # e.g., 40% behavioral, 60% preference
+BEHAVIORAL_SIM_WEIGHT = 0.5 # e.g., 40% behavioral, 60% preference
 
 # --- DEBUGGING & SIMULATION ---
 # Set to an integer to simulate a Gemini API failure on that specific batch index (0-based).
@@ -74,6 +74,7 @@ SCHEDULER_ENABLED = True
 # Sử dụng định dạng 24 giờ.
 SCHEDULER_RUN_HOUR = 1   # ví dụ: 1 cho 1:00 sáng
 SCHEDULER_RUN_MINUTE = 0 # ví dụ: 0 cho đúng giờ
+SCHEDULER_CONFIG_PATH = ARTIFACTS_DIR / "scheduler_config.json"
 
 
 # --- THAY ĐỔI: Chuyển từ file tĩnh sang cấu hình API và file cache ---

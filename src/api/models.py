@@ -1,6 +1,6 @@
 # api/models.py
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
 
 class PredictionRequest(BaseModel):
@@ -44,3 +44,19 @@ class UserDetailsResponse(BaseModel):
     top_predictions: Optional[List[PredictionInfo]] = None
     bottom_predictions: Optional[List[PredictionInfo]] = None
     error: Optional[str] = None
+
+
+# --- THÊM MỚI: Models cho Scheduler ---
+class SchedulerJob(BaseModel):
+    id: str
+    name: str
+    next_run_time: str
+    cron_trigger: str
+
+class SchedulerStatusResponse(BaseModel):
+    is_running: bool
+    jobs: list[SchedulerJob]
+
+class UpdateSchedulerRequest(BaseModel):
+    hour: int = Field(..., ge=0, le=23, description="Hour of the day (0-23)")
+    minute: int = Field(..., ge=0, le=59, description="Minute of the hour (0-59)")
