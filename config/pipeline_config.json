@@ -1,0 +1,19 @@
+{
+    "NUM_CLUSTERS": 5,
+    "NUM_INFLUENCERS": 50,
+    "MUTIFACTOR_ALPHA": 5e-05,
+    "NUM_NEIGHBORS": 25,
+    "EMBEDDING_BATCH_SIZE": 50,
+    "USE_BEHAVIORAL_DATA": true,
+    "BEHAVIORAL_WEIGHTS": {
+        "search": 0.1,
+        "view_detail": 0.2,
+        "click": 0.2,
+        "add_to_calendar": 0.3,
+        "follow": 0.3,
+        "blacklist": -0.3
+    },
+    "BEHAVIORAL_SIM_WEIGHT": 0.5,
+    "SCHEDULER_ENABLED": true,
+    "INCLUDE_SEARCH_BEHAVIOR": false
+}

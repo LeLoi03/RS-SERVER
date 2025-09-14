@@ -1,82 +1,81 @@
-import pandas as pd
-import time
-from typing import Dict
+"""
+================================================================================
+Pipeline Step 2: Review Embedding
+================================================================================
+"""
 
-import config.config as config
+import pandas as pd
+from typing import Dict, Any
+
+from config import config as static_config
 from src.utils.file_handlers import load_pickle, save_pickle
 from src.utils.live_logger import LiveLogger
-from src.services.gemini_service import GeminiService 
+from src.services.gemini_service import GeminiService
 
-# --- Main Pipeline Function ---
-# THAY ĐỔI: Hàm bây giờ nhận một DataFrame làm tham số
-def run_embedding_pipeline(df: pd.DataFrame) -> Dict:
+def run_embedding_pipeline(df: pd.DataFrame, config_data: Dict[str, Any]) -> Dict:
     """
-    Generates and saves vector embeddings for user reviews.
-    This pipeline is recoverable: it only processes users who don't have an
-    embedding yet. It receives a DataFrame instead of reading from a file.
-    
+    Tạo và lưu các vector embedding cho review của người dùng.
+    Pipeline này có thể phục hồi (upsert): nó chỉ xử lý những người dùng chưa có
+    embedding.
+
     Args:
-        df (pd.DataFrame): The source DataFrame containing user feedback data.
+        df (pd.DataFrame): DataFrame nguồn chứa dữ liệu phản hồi của người dùng.
+        config_data (Dict[str, Any]): Dictionary chứa các tham số cấu hình.
 
     Returns:
-        dict: A dictionary with "status" ('success', 'incomplete', 'error') 
-              and an optional "message".
+        dict: Một dictionary với "status", "message" (tùy chọn), và
+              "embeddings_added" (số lượng embedding mới được tạo).
     """
     try:
-        # --- 1. Load Existing Embeddings ---
-        # Logic này giữ nguyên, nó độc lập với nguồn dữ liệu
-        LiveLogger.log(f"📂 Checking for existing embeddings at '{config.EMBEDDINGS_ARTIFACT_PATH}'...")
-        user_embeddings = load_pickle(config.EMBEDDINGS_ARTIFACT_PATH)
+        # --- 1. Tải Embedding hiện có ---
+        LiveLogger.log(f"📂 Checking for existing embeddings at '{static_config.EMBEDDINGS_ARTIFACT_PATH}'...")
+        user_embeddings = load_pickle(static_config.EMBEDDINGS_ARTIFACT_PATH)
         if user_embeddings is None:
             user_embeddings = {}
             LiveLogger.log("   - No existing artifact found. Starting fresh.")
 
-        # --- 2. Identify Missing Users from DataFrame ---
-        # THAY ĐỔI: Không đọc file, xử lý trực tiếp từ DataFrame đầu vào
+        # --- 2. Xác định người dùng còn thiếu ---
         LiveLogger.log("✅ Source data received as DataFrame. Processing user reviews...")
         if df.empty:
             LiveLogger.log("❌ Error: Source DataFrame is empty.")
-            return {"status": "error", "message": "Input DataFrame is empty."}
-        
-        # Tổng hợp tất cả review của mỗi user thành một document duy nhất
+            return {"status": "error", "message": "Input DataFrame is empty.", "embeddings_added": 0}
+
         user_docs = df.groupby('user_id')['review'].apply(lambda reviews: ' '.join(reviews)).to_dict()
-        
+
         existing_user_ids = set(user_embeddings.keys())
         all_user_ids = set(user_docs.keys())
         missing_user_ids = sorted(list(all_user_ids - existing_user_ids))
 
         if not missing_user_ids:
             LiveLogger.log("✅ All user embeddings are already present. Nothing to do.")
-            return {"status": "success"}
-            
+            return {"status": "success", "embeddings_added": 0}
+
         LiveLogger.log(f"   - Found {len(all_user_ids)} total users in source data.")
         LiveLogger.log(f"   - Found {len(existing_user_ids)} existing embeddings.")
         LiveLogger.log(f"   - Found {len(missing_user_ids)} users requiring new embeddings.")
 
-        # --- 3. Generate Embeddings for Missing Users ---
-        # Toàn bộ logic này giữ nguyên, vì nó hoạt động dựa trên `missing_user_ids`
+        # --- 3. Tạo Embedding cho người dùng còn thiếu ---
         LiveLogger.log("🧠 Initializing Gemini Service and generating new embeddings...")
         gemini_service = GeminiService(
-            env_prefix=config.GEMINI_ENV_PREFIX, 
-            model=config.EMBEDDING_MODEL, 
-            task_type=config.EMBEDDING_TASK_TYPE,
-            dim=config.EMBEDDING_DIM
+            env_prefix=static_config.GEMINI_ENV_PREFIX,
+            model=static_config.EMBEDDING_MODEL,
+            task_type=static_config.EMBEDDING_TASK_TYPE,
+            dim=static_config.EMBEDDING_DIM
         )
-        
+
         docs_to_embed = [user_docs[uid] for uid in missing_user_ids]
         new_embeddings = {}
         has_failures = False
-
-        num_batches = (len(docs_to_embed) + config.EMBEDDING_BATCH_SIZE - 1) // config.EMBEDDING_BATCH_SIZE
+        batch_size = config_data['EMBEDDING_BATCH_SIZE']
+        num_batches = (len(docs_to_embed) + batch_size - 1) // batch_size
         LiveLogger.start_progress(description=f"Embedding {len(missing_user_ids)} users", total=num_batches)
 
         for i in range(num_batches):
-            start_index = i * config.EMBEDDING_BATCH_SIZE
-            end_index = start_index + config.EMBEDDING_BATCH_SIZE
-            
+            start_index = i * batch_size
+            end_index = start_index + batch_size
             batch_ids = missing_user_ids[start_index:end_index]
             batch_docs = docs_to_embed[start_index:end_index]
-            
+
             try:
                 embeddings_result = gemini_service.embed_content(batch_docs, batch_index=i)
                 if embeddings_result:
@@ -86,38 +85,37 @@ def run_embedding_pipeline(df: pd.DataFrame) -> Dict:
                     has_failures = True
             except gemini_service.google_exceptions.ResourceExhausted:
                 has_failures = True
-                LiveLogger.log(f"   - ❌ Batch #{i} failed after retries due to (simulated) error.")
+                LiveLogger.log(f"   - ❌ Batch #{i} failed after retries due to error.")
 
             LiveLogger.update_progress(current=i + 1)
 
         LiveLogger.log(f"✅ Finished embedding process.")
 
-        if len(new_embeddings) != len(missing_user_ids):
-             LiveLogger.log(f"⚠️ Warning: Could not generate embeddings for all missing users. "
-                           f"Successfully generated {len(new_embeddings)} out of {len(missing_user_ids)}.")
+        num_new_embeddings = len(new_embeddings)
 
-        # --- 4. Update and Save Artifacts ---
-        # Logic này giữ nguyên
-        LiveLogger.log(f"💾 Updating and saving embeddings artifact to '{config.EMBEDDINGS_ARTIFACT_PATH.name}'...")
-        user_embeddings.update(new_embeddings)
-        save_pickle(user_embeddings, config.EMBEDDINGS_ARTIFACT_PATH)
-        LiveLogger.log(f"   - Total embeddings now in file: {len(user_embeddings)}")
-        
-        # --- 5. Return final status based on failures ---
-        # Logic này giữ nguyên
+        if num_new_embeddings != len(missing_user_ids):
+             LiveLogger.log(f"⚠️ Warning: Could not generate embeddings for all missing users. "
+                           f"Successfully generated {num_new_embeddings} out of {len(missing_user_ids)}.")
+
+        # --- 4. Cập nhật và Lưu Artifact ---
+        if num_new_embeddings > 0:
+            LiveLogger.log(f"💾 Updating and saving embeddings artifact to '{static_config.EMBEDDINGS_ARTIFACT_PATH.name}'...")
+            user_embeddings.update(new_embeddings)
+            save_pickle(user_embeddings, static_config.EMBEDDINGS_ARTIFACT_PATH)
+            LiveLogger.log(f"   - Total embeddings now in file: {len(user_embeddings)}")
+
+        # --- 5. Trả về trạng thái cuối cùng ---
         if has_failures:
-            return {"status": "incomplete"}
+            return {"status": "incomplete", "embeddings_added": num_new_embeddings}
         else:
-            return {"status": "success"}
+            return {"status": "success", "embeddings_added": num_new_embeddings}
 
     except Exception as e:
         LiveLogger.log(f"❌ An unexpected error occurred in the embedding pipeline: {e}")
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": str(e), "embeddings_added": 0}
 
-# THAY ĐỔI: Cập nhật khối chạy standalone
+# Khối chạy độc lập (giữ nguyên không đổi)
 if __name__ == '__main__':
-    # This block allows the script to be run directly for isolated testing.
-    # It now simulates the orchestrator by first fetching data.
     class ConsoleLogger:
         @staticmethod
         def log(message): print(message)
@@ -129,28 +127,32 @@ if __name__ == '__main__':
         def request_admin_action(action_type, message): print(f"--- Admin Action Requested: {action_type} - {message} ---")
 
     import sys
-    sys.modules['src.utils.live_logger'] = type('LiveLoggerMock', (), {'LiveLogger': ConsoleLogger})
+    sys.modules['src/utils/live_logger'] = type('LiveLoggerMock', (), {'LiveLogger': ConsoleLogger})
     from src.utils.live_logger import LiveLogger
-    
-    # Import data loader để chạy thử nghiệm
+
     from utils.feedbacks_data_loader import fetch_and_prepare_data
-    
+    from config.config import get_pipeline_config
+
     print("--- Running Embedding Pipeline in Standalone Mode ---")
     try:
-        print("Step 0: Fetching data for standalone test...")
-        # Lấy dữ liệu bằng cách gọi data loader
+        print("Step 0a: Fetching data for standalone test...")
         source_df = fetch_and_prepare_data(force_fetch=False)
-        
+
+        print("Step 0b: Loading pipeline configuration...")
+        test_config = get_pipeline_config()
+        print(f"   - Loaded config with EMBEDDING_BATCH_SIZE = {test_config['EMBEDDING_BATCH_SIZE']}")
+
         if source_df is not None and not source_df.empty:
-            print("Step 1: Running embedding logic...")
-            result = run_embedding_pipeline(source_df)
+            print("\nStep 1: Running embedding logic...")
+            result = run_embedding_pipeline(source_df, test_config)
             print(f"\n✅ Embedding pipeline completed with status: {result['status']}")
+            print(f"   - Embeddings added: {result.get('embeddings_added', 'N/A')}")
             if result.get('message'):
                 print(f"   - Message: {result['message']}")
         else:
             print("❌ Failed to fetch or prepare data. Halting standalone test.")
-            
+
     except Exception as e:
         print(f"An error occurred during standalone execution: {e}")
-        
+
     print("--- Standalone run finished ---")

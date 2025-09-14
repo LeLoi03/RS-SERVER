@@ -1,4 +1,5 @@
 .env
 *.pyc
 /artifacts/
+/artifacts/scheduler_config.json
 artifacts/scheduler_config.json

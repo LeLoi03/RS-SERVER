@@ -8,5 +8,7 @@ fastapi
 uvicorn
 scipy
 apscheduler
-pymongo 
+pymongo
 dnspython
+tabulate
+google-api-core

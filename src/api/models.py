@@ -60,3 +60,28 @@ class SchedulerStatusResponse(BaseModel):
 class UpdateSchedulerRequest(BaseModel):
     hour: int = Field(..., ge=0, le=23, description="Hour of the day (0-23)")
     minute: int = Field(..., ge=0, le=59, description="Minute of the hour (0-59)")
+
+# --- Models for Pipeline Configuration API ---
+
+class BehavioralWeights(BaseModel):
+    search: float
+    view_detail: float
+    click: float
+    add_to_calendar: float
+    follow: float
+    blacklist: float
+
+class PipelineConfig(BaseModel):
+    num_clusters: int = Field(..., alias='NUM_CLUSTERS')
+    num_influencers: int = Field(..., alias='NUM_INFLUENCERS')
+    mutifactor_alpha: float = Field(..., alias='MUTIFACTOR_ALPHA')
+    num_neighbors: int = Field(..., alias='NUM_NEIGHBORS')
+    embedding_batch_size: int = Field(..., alias='EMBEDDING_BATCH_SIZE')
+    use_behavioral_data: bool = Field(..., alias='USE_BEHAVIORAL_DATA')
+    behavioral_weights: BehavioralWeights = Field(..., alias='BEHAVIORAL_WEIGHTS')
+    behavioral_sim_weight: float = Field(..., alias='BEHAVIORAL_SIM_WEIGHT')
+    scheduler_enabled: bool = Field(..., alias='SCHEDULER_ENABLED')
+    include_search_behavior: bool = Field(..., alias='INCLUDE_SEARCH_BEHAVIOR')
+
+    class Config:
+        allow_population_by_field_name = True
