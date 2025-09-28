@@ -3,3 +3,4 @@
 /artifacts/
 /artifacts/scheduler_config.json
 artifacts/scheduler_config.json
+*.json
