@@ -71,6 +71,7 @@ def fetch_and_prepare_data(force_fetch: bool = False) -> pd.DataFrame:
     
     # 4. Lưu vào cache để sử dụng cho các lần chạy sau
     LiveLogger.log(f"💾 Caching processed data to '{config.CACHED_DATASET_PATH.name}'...")
+    config.CACHED_DATASET_PATH.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(config.CACHED_DATASET_PATH, index=False)
     
     return df
