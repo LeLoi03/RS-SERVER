@@ -4,6 +4,7 @@ from pathlib import Path
 def save_pickle(data, path: Path):
     """Saves data to a pickle file."""
     try:
+        path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, 'wb') as f:
             pickle.dump(data, f)
         print(f"✅ Data successfully saved to '{path}'")
